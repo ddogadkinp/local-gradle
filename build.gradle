@@ -4,3 +4,74 @@
  * This is a general purpose Gradle build.
  * Learn how to create Gradle builds at https://guides.gradle.org/creating-new-gradle-builds/
  */
+import org.gradle.internal.logging.text.StyledTextOutput;
+import org.gradle.internal.logging.text.StyledTextOutputFactory;
+import static org.gradle.internal.logging.text.StyledTextOutput.Style;
+
+task printOS {
+	doLast {
+		def osName = System.getProperty('os.name').toLowerCase(Locale.ROOT)
+		println "${osName}"
+	}
+}
+
+task initPythonEnv {
+	doLast {
+		def isDaemon = System.properties.'sun.java.command'.contains('launcher.daemon')
+		if(!isDaemon){
+			def pythonPkgVersion = '2.7.15'
+			def pythonPkg = "python-${pythonPkgVersion}-macosx10.6.pkg"
+			def pythonPkgUrl = "https://www.python.org/ftp/python/${pythonPkgVersion}/${pythonPkg}"
+			def gotPkg = "/tmp/${pythonPkg}"
+
+			def f = new File(gotPkg)
+			if (!f.exists()) {
+			    new URL(pythonPkgUrl).withInputStream{ i -> f.withOutputStream{ it << i }}
+			}
+
+			exec {
+	            commandLine 'sudo', 'installer', '-pkg', "${gotPkg}", '-target', '/'            
+	        }
+
+	        exec {
+	            commandLine 'python', '-m', 'pip', 'install', '--upgrade', 'pip'          
+	        }
+
+	        exec {
+	            commandLine 'python', '-m', 'pip', 'install', 'pipenv'          
+	        }
+
+		}else{
+			println 'ACTION Please use `--no-daemon` option to run this task'
+		}
+	}
+}
+
+task installAnsibleEnv {
+	doLast {
+		def pipFile = 'Pipfile'
+		def f = new File(pipFile)
+		if (!f.exists()) {
+		    exec {
+	            commandLine 'python', '-m', 'pipenv', 'install', 'ansible', 'molecule', 'python-vagrant'          
+	        }
+		}else{
+			println 'Pipfile already created and the environment exists'
+		}
+	}
+}
+
+task initAnsibleEnv {
+	doLast {
+		println 'ERROR: Run - `python -m pipenv shell` - to switch to virtual environment for ansible'
+	}
+}
+
+task testCode {
+	doLast {
+		System.setProperty('org.gradle.color.error', 'RED')
+		println System.getProperty('org.gradle.color.error') 
+		def out = services.get(StyledTextOutputFactory).create("coloredOutput")
+		out.withStyle(Style.Error).println('RUN: `python -m pipenv shell` - to switch to virtual environment for ansible')
+	}
+}
